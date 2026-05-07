@@ -148,8 +148,57 @@ const getProfile = async (req, res) => {
     }
 };
 
+const updateProfile = async (req, res) => {
+    try {
+
+        const {
+            name,
+            bio,
+            skills_offered,
+            skills_wanted,
+            experience_level,
+            availability
+        } = req.body;
+
+        const result = await pool.query(
+            `
+            UPDATE users
+            SET
+                name = $1,
+                bio = $2,
+                skills_offered = $3,
+                skills_wanted = $4,
+                experience_level = $5,
+                availability = $6
+            WHERE id = $7
+            RETURNING *
+            `,
+            [
+                name,
+                bio,
+                skills_offered,
+                skills_wanted,
+                experience_level,
+                availability,
+                req.user
+            ]
+        );
+
+        res.json(result.rows[0]);
+
+    } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+            message: "Server Error"
+        });
+    }
+};
+
 module.exports = {
     registerUser,
     loginUser,
-    getProfile
+    getProfile,
+    updateProfile
 };

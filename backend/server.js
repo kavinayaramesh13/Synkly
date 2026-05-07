@@ -25,3 +25,7 @@ app.listen(PORT, () => {
 
 const userRoutes = require("./routes/userRoutes");
 app.use("/api/users", userRoutes);
+
+const matchRoutes = require("./routes/matchRoutes");
+
+app.use("/api/matches", matchRoutes);
