@@ -13,9 +13,7 @@ const {
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 
-// protected route
 router.get("/profile", protect, getProfile);
+router.put("/profile", protect, updateProfile);
 
 module.exports = router;
-
-router.put("/profile", protect, updateProfile);

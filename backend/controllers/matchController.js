@@ -5,7 +5,7 @@ const findMatches = async (req, res) => {
 
         const userId = req.user;
 
-        // get current logged-in user
+        // get current user
         const currentUserResult = await pool.query(
             "SELECT * FROM users WHERE id = $1",
             [userId]
@@ -13,14 +13,13 @@ const findMatches = async (req, res) => {
 
         const currentUser = currentUserResult.rows[0];
 
-        // check if user exists
         if (!currentUser) {
             return res.status(404).json({
                 message: "User not found"
             });
         }
 
-        // find two-way barter matches
+        // two-way barter matching
         const matchesResult = await pool.query(
             `
             SELECT * FROM users

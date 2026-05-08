@@ -31,10 +31,12 @@ const registerUser = async (req, res) => {
 
         // insert user
         const result = await pool.query(
-            `INSERT INTO users
+            `
+            INSERT INTO users
             (name, email, password, skills_offered, skills_wanted)
             VALUES ($1, $2, $3, $4, $5)
-            RETURNING *`,
+            RETURNING *
+            `,
             [
                 name,
                 email,
@@ -46,7 +48,7 @@ const registerUser = async (req, res) => {
 
         const user = result.rows[0];
 
-        // generate JWT token
+        // generate token
         const token = jwt.sign(
             { id: user.id },
             process.env.JWT_SECRET,
@@ -59,6 +61,7 @@ const registerUser = async (req, res) => {
         });
 
     } catch (error) {
+
         console.log(error);
 
         res.status(500).json({
@@ -70,9 +73,9 @@ const registerUser = async (req, res) => {
 // LOGIN USER
 const loginUser = async (req, res) => {
     try {
+
         const { email, password } = req.body;
 
-        // find user
         const result = await pool.query(
             "SELECT * FROM users WHERE email = $1",
             [email]
@@ -80,14 +83,12 @@ const loginUser = async (req, res) => {
 
         const user = result.rows[0];
 
-        // check user exists
         if (!user) {
             return res.status(400).json({
                 message: "Invalid Credentials"
             });
         }
 
-        // compare passwords
         const isMatch = await bcrypt.compare(
             password,
             user.password
@@ -99,7 +100,6 @@ const loginUser = async (req, res) => {
             });
         }
 
-        // generate JWT token
         const token = jwt.sign(
             { id: user.id },
             process.env.JWT_SECRET,
@@ -112,6 +112,7 @@ const loginUser = async (req, res) => {
         });
 
     } catch (error) {
+
         console.log(error);
 
         res.status(500).json({
@@ -120,7 +121,7 @@ const loginUser = async (req, res) => {
     }
 };
 
-// GET USER PROFILE (PROTECTED)
+// GET PROFILE
 const getProfile = async (req, res) => {
     try {
 
@@ -140,6 +141,7 @@ const getProfile = async (req, res) => {
         res.json(user);
 
     } catch (error) {
+
         console.log(error);
 
         res.status(500).json({
@@ -148,6 +150,7 @@ const getProfile = async (req, res) => {
     }
 };
 
+// UPDATE PROFILE
 const updateProfile = async (req, res) => {
     try {
 
