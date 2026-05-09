@@ -1,10 +1,47 @@
 import React from "react";
 
+import {
+    BrowserRouter,
+    Routes,
+    Route
+} from "react-router-dom";
+
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import Requests from "./pages/Requests";
+
 function App() {
+
     return (
-        <div className="min-h-screen bg-black text-white flex items-center justify-center text-6xl font-bold">
-            Synkly
-        </div>
+
+        <BrowserRouter>
+
+            <Routes>
+
+                <Route
+                    path="/"
+                    element={<Login />}
+                />
+
+                <Route
+                    path="/register"
+                    element={<Register />}
+                />
+
+                <Route
+                    path="/dashboard"
+                    element={<Dashboard />}
+                />
+
+                <Route
+                    path="/requests"
+                    element={<Requests />}
+                />
+
+            </Routes>
+
+        </BrowserRouter>
     );
 }
 

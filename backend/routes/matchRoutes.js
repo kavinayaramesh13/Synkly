@@ -1,12 +1,18 @@
 const express = require("express");
+
 const router = express.Router();
 
-const protect = require("../middleware/authMiddleware");
-
 const {
-    findMatches
+    getMatches
 } = require("../controllers/matchController");
 
-router.get("/", protect, findMatches);
+const authMiddleware =
+    require("../middleware/authMiddleware");
+
+router.get(
+    "/",
+    authMiddleware,
+    getMatches
+);
 
 module.exports = router;

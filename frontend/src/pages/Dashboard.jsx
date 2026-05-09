@@ -13,19 +13,34 @@ function Dashboard() {
 
     const [matches, setMatches] = useState([]);
 
+    const [user, setUser] = useState(null);
+
+    // CHECK LOGIN + FETCH MATCHES
+
     useEffect(() => {
 
         const token =
             localStorage.getItem("token");
 
         if (!token) {
+
             navigate("/");
+
             return;
         }
+
+        const storedUser =
+            JSON.parse(
+                localStorage.getItem("user")
+            );
+
+        setUser(storedUser);
 
         fetchMatches();
 
     }, []);
+
+    // FETCH MATCHES
 
     const fetchMatches = async () => {
 
@@ -54,69 +69,323 @@ function Dashboard() {
         }
     };
 
+    // SEND REQUEST
+
+    const sendRequest = async (receiverId) => {
+
+        try {
+
+            const token =
+                localStorage.getItem("token");
+
+            await API.post(
+                "/requests/send",
+                { receiverId },
+                {
+                    headers: {
+                        Authorization:
+                            `Bearer ${token}`
+                    }
+                }
+            );
+
+            alert("Request Sent");
+
+        } catch (error) {
+
+            console.log(error);
+
+            alert(
+                error.response?.data?.message ||
+                "Failed to send request"
+            );
+        }
+    };
+
+    // LOGOUT
+
     const logout = () => {
 
         localStorage.removeItem("token");
+
+        localStorage.removeItem("user");
 
         navigate("/");
     };
 
     return (
-        <div>
 
-            <h1>Synkly Dashboard</h1>
+        <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-blue-950 text-white">
 
-            <button onClick={logout}>
-                Logout
-            </button>
+            {/* NAVBAR */}
 
-            <hr />
+            <div className="flex justify-between items-center px-8 py-6 border-b border-white/10 backdrop-blur-lg">
 
-            <h2>Your Skill Matches</h2>
+                <h1 className="text-3xl font-bold">
+                    Synkly
+                </h1>
 
-            {
-                matches.length === 0
-                ? (
-                    <p>No matches found</p>
-                )
-                : (
-                    matches.map((user) => (
+                <div className="flex items-center">
 
-                        <div
-                            key={user.id}
-                            style={{
-                                border: "1px solid black",
-                                padding: "10px",
-                                marginBottom: "10px"
-                            }}
-                        >
+                    {/* REQUESTS BUTTON */}
 
-                            <h3>{user.name}</h3>
+                    <button
+                        onClick={() =>
+                            navigate("/requests")
+                        }
+                        className="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-xl transition-all duration-300 mr-3"
+                    >
+                        Requests
+                    </button>
 
-                            <p>
-                                Email: {user.email}
+                    {/* LOGOUT BUTTON */}
+
+                    <button
+                        onClick={logout}
+                        className="bg-red-500 hover:bg-red-600 px-5 py-2 rounded-xl transition-all duration-300"
+                    >
+                        Logout
+                    </button>
+
+                </div>
+
+            </div>
+
+            {/* MAIN CONTENT */}
+
+            <div className="p-8">
+
+                {/* USER PROFILE */}
+
+                {
+                    user && (
+
+                        <div className="bg-white/10 backdrop-blur-lg border border-white/10 rounded-3xl p-6 mb-10 shadow-xl">
+
+                            <h2 className="text-3xl font-bold mb-2">
+                                Welcome back, {user.name} 👋
+                            </h2>
+
+                            <p className="text-gray-300 mb-6">
+                                Ready to exchange skills today?
                             </p>
 
-                            <p>
-                                Skills Offered:
-                                {" "}
-                                {
-                                    user.skills_offered.join(", ")
-                                }
-                            </p>
+                            <div className="grid md:grid-cols-2 gap-6">
 
-                            <p>
-                                Skills Wanted:
-                                {" "}
-                                {
-                                    user.skills_wanted.join(", ")
-                                }
-                            </p>
+                                {/* OFFERED SKILLS */}
+
+                                <div>
+
+                                    <h3 className="font-semibold mb-3">
+                                        Your Offered Skills
+                                    </h3>
+
+                                    <div className="flex flex-wrap gap-2">
+
+                                        {
+                                            user.skills_offered.map((skill, index) => (
+
+                                                <span
+                                                    key={index}
+                                                    className="bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full text-sm"
+                                                >
+                                                    {skill}
+                                                </span>
+                                            ))
+                                        }
+
+                                    </div>
+
+                                </div>
+
+                                {/* WANTED SKILLS */}
+
+                                <div>
+
+                                    <h3 className="font-semibold mb-3">
+                                        Skills You Want
+                                    </h3>
+
+                                    <div className="flex flex-wrap gap-2">
+
+                                        {
+                                            user.skills_wanted.map((skill, index) => (
+
+                                                <span
+                                                    key={index}
+                                                    className="bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full text-sm"
+                                                >
+                                                    {skill}
+                                                </span>
+                                            ))
+                                        }
+
+                                    </div>
+
+                                </div>
+
+                            </div>
 
                         </div>
-                    ))
-                )
-            }
+                    )
+                }
+
+                {/* MATCHES HEADER */}
+
+                <h2 className="text-4xl font-bold mb-2">
+                    Your Skill Matches
+                </h2>
+
+                <p className="text-gray-300 mb-10">
+                    Connect and exchange knowledge
+                </p>
+
+                {/* MATCHES */}
+
+                {
+                    matches.length === 0
+
+                    ? (
+
+                        <div className="bg-white/10 border border-white/10 rounded-3xl p-10 text-center text-gray-300">
+
+                            No matches found
+
+                        </div>
+                    )
+
+                    : (
+
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                            {
+                                matches.map((user) => (
+
+                                    <div
+                                        key={user.id}
+                                        className="bg-white/10 backdrop-blur-lg border border-white/10 rounded-3xl p-6 shadow-xl hover:scale-105 transition-all duration-300"
+                                    >
+
+                                        {/* TOP SECTION */}
+
+                                        <div className="flex items-center justify-between mb-4">
+
+                                            <div className="flex items-center gap-3">
+
+                                                {/* AVATAR */}
+
+                                                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xl font-bold">
+
+                                                    {
+                                                        user.name
+                                                            .charAt(0)
+                                                            .toUpperCase()
+                                                    }
+
+                                                </div>
+
+                                                <div>
+
+                                                    <h3 className="text-2xl font-semibold">
+                                                        {user.name}
+                                                    </h3>
+
+                                                    <p className="text-gray-400 text-sm">
+                                                        Skill Exchange Partner
+                                                    </p>
+
+                                                </div>
+
+                                            </div>
+
+                                            {/* MATCH PERCENT */}
+
+                                            <div className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm">
+
+                                                {user.matchPercentage}% Match
+
+                                            </div>
+
+                                        </div>
+
+                                        {/* EMAIL */}
+
+                                        <p className="text-gray-300 mb-5">
+                                            {user.email}
+                                        </p>
+
+                                        {/* OFFERED */}
+
+                                        <div className="mb-4">
+
+                                            <h4 className="font-semibold mb-2">
+                                                Skills Offered
+                                            </h4>
+
+                                            <div className="flex flex-wrap gap-2">
+
+                                                {
+                                                    user.skills_offered.map((skill, index) => (
+
+                                                        <span
+                                                            key={index}
+                                                            className="bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full text-sm"
+                                                        >
+                                                            {skill}
+                                                        </span>
+                                                    ))
+                                                }
+
+                                            </div>
+
+                                        </div>
+
+                                        {/* WANTED */}
+
+                                        <div>
+
+                                            <h4 className="font-semibold mb-2">
+                                                Skills Wanted
+                                            </h4>
+
+                                            <div className="flex flex-wrap gap-2">
+
+                                                {
+                                                    user.skills_wanted.map((skill, index) => (
+
+                                                        <span
+                                                            key={index}
+                                                            className="bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full text-sm"
+                                                        >
+                                                            {skill}
+                                                        </span>
+                                                    ))
+                                                }
+
+                                            </div>
+
+                                        </div>
+
+                                        {/* CONNECT BUTTON */}
+
+                                        <button
+                                            onClick={() =>
+                                                sendRequest(user.id)
+                                            }
+                                            className="w-full mt-5 bg-blue-600 hover:bg-blue-700 py-3 rounded-xl transition-all duration-300"
+                                        >
+                                            Connect
+                                        </button>
+
+                                    </div>
+                                ))
+                            }
+
+                        </div>
+                    )
+                }
+
+            </div>
 
         </div>
     );

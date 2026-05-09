@@ -17,6 +17,7 @@ function Login() {
     });
 
     const handleChange = (e) => {
+
         setFormData({
             ...formData,
             [e.target.name]: e.target.value
@@ -39,6 +40,11 @@ function Login() {
                 res.data.token
             );
 
+            localStorage.setItem(
+                "user",
+                JSON.stringify(res.data.user)
+            );
+
             navigate("/dashboard");
 
         } catch (error) {
@@ -50,41 +56,61 @@ function Login() {
     };
 
     return (
-        <div>
 
-            <h1>Login</h1>
+        <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-blue-950 flex items-center justify-center px-4">
 
-            <form onSubmit={handleSubmit}>
+            <div className="w-full max-w-md bg-white/10 backdrop-blur-lg border border-white/20 rounded-3xl p-8 shadow-2xl">
 
-                <input
-                    type="email"
-                    name="email"
-                    placeholder="Email"
-                    onChange={handleChange}
-                />
+                <h1 className="text-4xl font-bold text-white text-center mb-2">
+                    Synkly
+                </h1>
 
-                <br /><br />
+                <p className="text-gray-300 text-center mb-8">
+                    Skill Exchange Platform
+                </p>
 
-                <input
-                    type="password"
-                    name="password"
-                    placeholder="Password"
-                    onChange={handleChange}
-                />
+                <form
+                    onSubmit={handleSubmit}
+                    className="space-y-5"
+                >
 
-                <br /><br />
+                    <input
+                        type="email"
+                        name="email"
+                        placeholder="Enter Email"
+                        onChange={handleChange}
+                        className="w-full p-4 rounded-xl bg-white/10 text-white border border-gray-500 outline-none focus:border-blue-400"
+                    />
 
-                <button type="submit">
-                    Login
-                </button>
+                    <input
+                        type="password"
+                        name="password"
+                        placeholder="Enter Password"
+                        onChange={handleChange}
+                        className="w-full p-4 rounded-xl bg-white/10 text-white border border-gray-500 outline-none focus:border-blue-400"
+                    />
 
-            </form>
+                    <button
+                        type="submit"
+                        className="w-full bg-blue-600 hover:bg-blue-700 transition-all duration-300 text-white py-4 rounded-xl font-semibold"
+                    >
+                        Login
+                    </button>
 
-            <br />
+                </form>
 
-            <Link to="/register">
-                Don't have account? Register
-            </Link>
+                <p className="text-center text-gray-300 mt-6">
+                    Don't have an account?
+                </p>
+
+                <Link
+                    to="/register"
+                    className="block text-center mt-2 text-blue-400 hover:text-blue-300"
+                >
+                    Create Account
+                </Link>
+
+            </div>
 
         </div>
     );
