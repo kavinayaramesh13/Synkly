@@ -44,3 +44,11 @@ app.use(
     "/api/requests",
     requestRoutes
 );
+
+const sessionRoutes =
+    require("./routes/sessionRoutes");
+
+app.use(
+    "/api/sessions",
+    sessionRoutes
+);

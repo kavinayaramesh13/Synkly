@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Requests from "./pages/Requests";
+import Sessions from "./pages/Sessions";
 
 function App() {
 
@@ -37,6 +38,11 @@ function App() {
                 <Route
                     path="/requests"
                     element={<Requests />}
+                />
+
+                <Route
+                    path="/sessions"
+                    element={<Sessions />}
                 />
 
             </Routes>
