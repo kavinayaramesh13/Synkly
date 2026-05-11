@@ -80,7 +80,7 @@ function Requests() {
         }
     };
 
-    // HANDLE INPUT
+    // HANDLE SESSION INPUTS
 
     const handleInputChange = (
         requestId,
@@ -143,9 +143,23 @@ function Requests() {
 
         <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-blue-950 text-white p-8">
 
-            <h1 className="text-4xl font-bold mb-10">
-                Incoming Requests
-            </h1>
+            {/* HEADER */}
+
+            <div className="flex justify-between items-center mb-10">
+
+                <div>
+
+                    <h1 className="text-4xl font-bold">
+                        Incoming Requests
+                    </h1>
+
+                    <p className="text-gray-400 mt-2">
+                        Manage collaboration requests
+                    </p>
+
+                </div>
+
+            </div>
 
             {
                 requests.length === 0
@@ -175,6 +189,8 @@ function Requests() {
 
                                     <div className="flex items-center gap-4 mb-5">
 
+                                        {/* AVATAR */}
+
                                         <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xl font-bold">
 
                                             {
@@ -186,6 +202,8 @@ function Requests() {
                                             }
 
                                         </div>
+
+                                        {/* INFO */}
 
                                         <div>
 
@@ -242,12 +260,26 @@ function Requests() {
                                         )
                                     }
 
-                                    {/* SESSION SCHEDULER */}
+                                    {/* ACCEPTED SECTION */}
 
                                     {
                                         request.status === "accepted" && (
 
                                             <div className="space-y-4">
+
+                                                {/* CHAT BUTTON */}
+
+                                                <button
+                                                    onClick={() =>
+                                                        window.location.href =
+                                                            `/chat/${request.sender_id}`
+                                                    }
+                                                    className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl transition-all duration-300"
+                                                >
+                                                    Open Chat
+                                                </button>
+
+                                                {/* SESSION TIME */}
 
                                                 <input
                                                     type="datetime-local"
@@ -261,6 +293,8 @@ function Requests() {
                                                     }
                                                 />
 
+                                                {/* DURATION */}
+
                                                 <input
                                                     type="number"
                                                     placeholder="Duration (mins)"
@@ -273,6 +307,8 @@ function Requests() {
                                                         )
                                                     }
                                                 />
+
+                                                {/* CREATE SESSION */}
 
                                                 <button
                                                     onClick={() =>

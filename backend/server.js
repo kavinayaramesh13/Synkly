@@ -52,3 +52,11 @@ app.use(
     "/api/sessions",
     sessionRoutes
 );
+
+const messageRoutes =
+    require("./routes/messageRoutes");
+
+app.use(
+    "/api/messages",
+    messageRoutes
+);
