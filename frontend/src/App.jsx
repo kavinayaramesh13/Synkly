@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Requests from "./pages/Requests";
 import Sessions from "./pages/Sessions";
 import Chat from "./pages/Chat";
+import SessionRoom from "./pages/SessionRoom";
 
 function App() {
 
@@ -49,6 +50,11 @@ function App() {
                 <Route
                     path="/chat/:userId"
                     element={<Chat />}
+                />
+
+                <Route
+                    path="/session-room/:sessionId"
+                    element={<SessionRoom />}
                 />
 
             </Routes>

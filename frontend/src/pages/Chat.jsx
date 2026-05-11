@@ -9,6 +9,14 @@ import {
 
 import API from "../services/api";
 
+import io from "socket.io-client";
+
+/* SOCKET */
+
+const socket = io(
+    "http://localhost:5000"
+);
+
 function Chat() {
 
     const { userId } =
@@ -20,18 +28,101 @@ function Chat() {
     const [message, setMessage] =
         useState("");
 
+    const [typing, setTyping] =
+        useState(false);
+
+    const [onlineUsers, setOnlineUsers] =
+        useState([]);
+
     const currentUser =
         JSON.parse(
             localStorage.getItem("user")
         );
 
+    /* ROOM */
+
+    const room =
+        [currentUser.id, userId]
+            .sort()
+            .join("_");
+
+    /* LOAD CHAT */
+
     useEffect(() => {
 
         fetchMessages();
 
+        /* USER ONLINE */
+
+        socket.emit(
+            "user_online",
+            currentUser.id
+        );
+
+        /* JOIN ROOM */
+
+        socket.emit(
+            "join_room",
+            room
+        );
+
+        /* RECEIVE MESSAGE */
+
+        socket.on(
+            "receive_message",
+            (data) => {
+
+                setMessages((prev) => [
+                    ...prev,
+                    data
+                ]);
+            }
+        );
+
+        /* ONLINE USERS */
+
+        socket.on(
+            "online_users",
+            (users) => {
+
+                setOnlineUsers(users);
+            }
+        );
+
+        /* TYPING */
+
+        socket.on(
+            "user_typing",
+            () => {
+
+                setTyping(true);
+
+                setTimeout(() => {
+
+                    setTyping(false);
+
+                }, 2000);
+            }
+        );
+
+        return () => {
+
+            socket.off(
+                "receive_message"
+            );
+
+            socket.off(
+                "online_users"
+            );
+
+            socket.off(
+                "user_typing"
+            );
+        };
+
     }, []);
 
-    // FETCH CHAT
+    /* FETCH OLD MESSAGES */
 
     const fetchMessages = async () => {
 
@@ -58,7 +149,7 @@ function Chat() {
         }
     };
 
-    // SEND MESSAGE
+    /* SEND MESSAGE */
 
     const sendMessage = async () => {
 
@@ -68,6 +159,8 @@ function Chat() {
 
             const token =
                 localStorage.getItem("token");
+
+            /* SAVE TO DATABASE */
 
             await API.post(
                 "/messages/send",
@@ -83,17 +176,61 @@ function Chat() {
                 }
             );
 
-            setMessage("");
+            /* REALTIME MESSAGE */
 
-            fetchMessages();
+            const realtimeMessage = {
+
+                sender_id:
+                    currentUser.id,
+
+                receiver_id:
+                    userId,
+
+                message,
+
+                created_at:
+                    new Date(),
+
+                room
+            };
+
+            socket.emit(
+                "send_message",
+                realtimeMessage
+            );
+
+            setMessage("");
 
         } catch (error) {
 
             console.log(error);
 
-            alert("Failed to send");
+            alert(
+                "Failed to send"
+            );
         }
     };
+
+    /* HANDLE TYPING */
+
+    const handleTyping = (e) => {
+
+        setMessage(
+            e.target.value
+        );
+
+        socket.emit(
+            "typing",
+            { room }
+        );
+    };
+
+    /* CHECK ONLINE */
+
+    const isOnline =
+        onlineUsers.includes(
+            userId.toString()
+        );
 
     return (
 
@@ -107,68 +244,99 @@ function Chat() {
                     Synkly Chat
                 </h1>
 
-                <p className="text-gray-400 mt-1">
-                    Discuss and schedule your learning session
-                </p>
+                <div className="flex items-center gap-3 mt-2">
+
+                    <div
+                        className={`w-3 h-3 rounded-full ${
+                            isOnline
+                                ? "bg-green-500"
+                                : "bg-gray-500"
+                        }`}
+                    />
+
+                    <p className="text-gray-400">
+
+                        {
+                            isOnline
+                                ? "Online"
+                                : "Offline"
+                        }
+
+                    </p>
+
+                </div>
+
+                {
+                    typing && (
+
+                        <p className="text-blue-400 text-sm mt-2">
+
+                            Typing...
+
+                        </p>
+                    )
+                }
 
             </div>
 
-            {/* MESSAGES */}
+            {/* CHAT AREA */}
 
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
 
                 {
-                    messages.map((msg) => {
+                    messages.map(
+                        (msg, index) => {
 
-                        const isMine =
-                            msg.sender_id ===
-                            currentUser.id;
+                            const isMine =
+                                msg.sender_id ===
+                                currentUser.id;
 
-                        return (
-
-                            <div
-                                key={msg.id}
-                                className={`flex ${
-                                    isMine
-                                        ? "justify-end"
-                                        : "justify-start"
-                                }`}
-                            >
+                            return (
 
                                 <div
-                                    className={`
-                                        max-w-[70%]
-                                        px-5
-                                        py-3
-                                        rounded-2xl
-                                        shadow-lg
-                                        ${
-                                            isMine
-                                                ? "bg-blue-600"
-                                                : "bg-white/10"
-                                        }
-                                    `}
+                                    key={index}
+                                    className={`flex ${
+                                        isMine
+                                            ? "justify-end"
+                                            : "justify-start"
+                                    }`}
                                 >
 
-                                    <p>
-                                        {msg.message}
-                                    </p>
+                                    <div
+                                        className={`
+                                            max-w-[70%]
+                                            px-5
+                                            py-3
+                                            rounded-2xl
+                                            shadow-lg
+                                            ${
+                                                isMine
+                                                    ? "bg-blue-600"
+                                                    : "bg-white/10"
+                                            }
+                                        `}
+                                    >
 
-                                    <p className="text-xs text-gray-300 mt-2">
+                                        <p>
+                                            {msg.message}
+                                        </p>
 
-                                        {
-                                            new Date(
-                                                msg.created_at
-                                            ).toLocaleTimeString()
-                                        }
+                                        <p className="text-xs text-gray-300 mt-2">
 
-                                    </p>
+                                            {
+                                                new Date(
+                                                    msg.created_at
+                                                ).toLocaleTimeString()
+                                            }
+
+                                        </p>
+
+                                    </div>
 
                                 </div>
-
-                            </div>
-                        );
-                    })
+                            );
+                        }
+                    )
                 }
 
             </div>
@@ -181,11 +349,7 @@ function Chat() {
                     type="text"
                     placeholder="Type your message..."
                     value={message}
-                    onChange={(e) =>
-                        setMessage(
-                            e.target.value
-                        )
-                    }
+                    onChange={handleTyping}
                     className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-5 py-3 outline-none"
                 />
 
