@@ -1,13 +1,172 @@
-import React from "react";
+import React, {
+    useEffect,
+    useRef,
+    useState
+} from "react";
 
 import {
     useParams
 } from "react-router-dom";
 
+import Peer from "peerjs";
+
 function SessionRoom() {
 
     const { sessionId } =
         useParams();
+
+    const localVideoRef =
+        useRef(null);
+
+    const remoteVideoRef =
+        useRef(null);
+
+    const [peerId, setPeerId] =
+        useState("");
+
+    useEffect(() => {
+
+        /* CREATE PEER */
+
+        const peer =
+            new Peer(
+                undefined,
+                {
+                    host: "127.0.0.1",
+                    port: 9000,
+                    path: "/",
+                    secure: false
+                }
+            );
+
+        /* PEER CONNECTED */
+
+        peer.on(
+            "open",
+            (id) => {
+
+                console.log(
+                    "CONNECTED PEER:",
+                    id
+                );
+
+                setPeerId(id);
+            }
+        );
+
+        /* PEER ERRORS */
+
+        peer.on(
+            "error",
+            (err) => {
+
+                console.log(
+                    "PEER ERROR:",
+                    err
+                );
+            }
+        );
+
+        /* ACCESS CAMERA + MIC */
+
+        navigator.mediaDevices
+            .getUserMedia({
+                video: true,
+                audio: true
+            })
+            .then((stream) => {
+
+                /* SHOW LOCAL VIDEO */
+
+                if (
+                    localVideoRef.current
+                ) {
+
+                    localVideoRef.current.srcObject =
+                        stream;
+                }
+
+                /* WAIT BEFORE ASKING */
+
+                setTimeout(() => {
+
+                    const otherPeerId =
+                        prompt(
+                            "Enter other user's Peer ID"
+                        );
+
+                    /* CALL OTHER USER */
+
+                    if (
+                        otherPeerId
+                    ) {
+
+                        const call =
+                            peer.call(
+                                otherPeerId,
+                                stream
+                            );
+
+                        /* RECEIVE REMOTE VIDEO */
+
+                        call.on(
+                            "stream",
+                            (
+                                remoteStream
+                            ) => {
+
+                                if (
+                                    remoteVideoRef.current
+                                ) {
+
+                                    remoteVideoRef.current.srcObject =
+                                        remoteStream;
+                                }
+                            }
+                        );
+                    }
+
+                }, 3000);
+
+                /* ANSWER INCOMING CALL */
+
+                peer.on(
+                    "call",
+                    (call) => {
+
+                        call.answer(
+                            stream
+                        );
+
+                        call.on(
+                            "stream",
+                            (
+                                remoteStream
+                            ) => {
+
+                                if (
+                                    remoteVideoRef.current
+                                ) {
+
+                                    remoteVideoRef.current.srcObject =
+                                        remoteStream;
+                                }
+                            }
+                        );
+                    }
+                );
+
+            })
+            .catch((err) => {
+
+                console.log(err);
+
+                alert(
+                    "Camera/Microphone access denied"
+                );
+            });
+
+    }, []);
 
     return (
 
@@ -15,113 +174,112 @@ function SessionRoom() {
 
             {/* HEADER */}
 
-            <div className="p-6 border-b border-white/10 flex justify-between items-center">
+            <div className="p-6 border-b border-white/10">
 
-                <div>
+                <h1 className="text-4xl font-bold">
 
-                    <h1 className="text-3xl font-bold">
+                    Synkly Session Room
 
-                        Synkly Session Room
+                </h1>
 
-                    </h1>
+                <p className="text-gray-400 mt-2">
 
-                    <p className="text-gray-400 mt-1">
+                    Live collaborative learning
 
-                        Collaborative learning environment
+                </p>
+
+            </div>
+
+            {/* PEER ID */}
+
+            <div className="px-6 pt-6">
+
+                <div className="bg-blue-900/50 border border-blue-500/20 rounded-3xl p-6">
+
+                    <p className="text-lg text-gray-300">
+
+                        Your Peer ID
+
+                    </p>
+
+                    <p className="text-3xl font-bold mt-2 break-all">
+
+                        {
+                            peerId
+                                ? peerId
+                                : "Connecting..."
+                        }
 
                     </p>
 
                 </div>
 
-                <div className="bg-green-500/20 text-green-400 px-4 py-2 rounded-full">
+            </div>
 
-                    LIVE SESSION
+            {/* VIDEO GRID */}
+
+            <div className="flex-1 grid md:grid-cols-2 gap-6 p-6">
+
+                {/* LOCAL VIDEO */}
+
+                <div className="bg-white/10 border border-white/10 rounded-3xl p-5">
+
+                    <h2 className="text-2xl font-semibold mb-4">
+
+                        Your Video
+
+                    </h2>
+
+                    <video
+                        ref={localVideoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-[500px] rounded-2xl bg-black object-cover"
+                    />
+
+                </div>
+
+                {/* REMOTE VIDEO */}
+
+                <div className="bg-white/10 border border-white/10 rounded-3xl p-5">
+
+                    <h2 className="text-2xl font-semibold mb-4">
+
+                        Peer Video
+
+                    </h2>
+
+                    <video
+                        ref={remoteVideoRef}
+                        autoPlay
+                        playsInline
+                        className="w-full h-[500px] rounded-2xl bg-black object-cover"
+                    />
 
                 </div>
 
             </div>
 
-            {/* MAIN CONTENT */}
+            {/* FOOTER */}
 
-            <div className="flex-1 grid lg:grid-cols-3 gap-6 p-6">
+            <div className="p-6 border-t border-white/10 flex justify-between items-center">
 
-                {/* VIDEO AREA */}
+                <div className="text-gray-400">
 
-                <div className="lg:col-span-2 bg-white/10 border border-white/10 rounded-3xl flex items-center justify-center text-gray-400 text-2xl">
-
-                    Video / Screen Share Area
-
-                </div>
-
-                {/* SIDE PANEL */}
-
-                <div className="bg-white/10 border border-white/10 rounded-3xl p-6 flex flex-col">
-
-                    <h2 className="text-2xl font-semibold mb-4">
-
-                        Session Info
-
-                    </h2>
-
-                    <div className="space-y-4 text-gray-300">
-
-                        <p>
-
-                            Session ID:
-                            <span className="text-white ml-2">
-
-                                {sessionId}
-
-                            </span>
-
-                        </p>
-
-                        <p>
-
-                            Status:
-                            <span className="text-green-400 ml-2">
-
-                                Active
-
-                            </span>
-
-                        </p>
-
-                    </div>
-
-                    {/* CHAT PLACEHOLDER */}
-
-                    <div className="mt-8 flex-1 bg-black/20 rounded-2xl p-4 overflow-y-auto">
-
-                        <p className="text-gray-400">
-
-                            Session chat coming soon...
-
-                        </p>
-
-                    </div>
-
-                    {/* MESSAGE INPUT */}
-
-                    <div className="mt-4 flex gap-3">
-
-                        <input
-                            type="text"
-                            placeholder="Message..."
-                            className="flex-1 bg-white/10 border border-white/10 rounded-xl px-4 py-3 outline-none"
-                        />
-
-                        <button
-                            className="bg-blue-600 hover:bg-blue-700 px-5 py-3 rounded-xl transition-all duration-300"
-                        >
-
-                            Send
-
-                        </button>
-
-                    </div>
+                    Session ID:
+                    {" "}
+                    {sessionId}
 
                 </div>
+
+                <button
+                    className="bg-red-500 hover:bg-red-600 px-6 py-3 rounded-2xl transition-all duration-300"
+                >
+
+                    Leave Session
+
+                </button>
 
             </div>
 

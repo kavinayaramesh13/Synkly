@@ -47,6 +47,9 @@ const io = new Server(server, {
     }
 });
 
+/* PEER SERVER */
+
+
 /* ONLINE USERS */
 
 const onlineUsers = {};
