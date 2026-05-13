@@ -47,12 +47,13 @@ const io = new Server(server, {
     }
 });
 
-/* PEER SERVER */
-
-
 /* ONLINE USERS */
 
 const onlineUsers = {};
+
+/* VIDEO ROOMS */
+
+const rooms = {};
 
 /* MIDDLEWARE */
 
@@ -120,19 +121,105 @@ io.on("connection", (socket) => {
         }
     );
 
-    /* JOIN ROOM */
+    /* JOIN VIDEO ROOM */
 
     socket.on(
-        "join_room",
-        (room) => {
+    "join_room",
+    ({ room, peerId }) => {
 
-            socket.join(room);
+        socket.join(room);
 
-            console.log(
-                `Joined Room: ${room}`
-            );
+        console.log(
+            "JOIN ROOM:",
+            room,
+            peerId
+        );
+
+        /* CREATE ROOM */
+
+        if (!rooms[room]) {
+
+            rooms[room] = [];
         }
-    );
+
+        /* REMOVE DUPLICATES */
+
+        rooms[room] =
+            rooms[room].filter(
+                (user) =>
+                    user.socketId !== socket.id
+            );
+
+        /* EXISTING USERS */
+
+        const existingUsers =
+            rooms[room].map(
+                (user) =>
+                    user.peerId
+            );
+
+        console.log(
+            "EXISTING USERS:",
+            existingUsers
+        );
+
+        /* SEND USERS */
+
+        socket.emit(
+            "all-users",
+            existingUsers
+        );
+
+        /* ADD CURRENT USER */
+
+        rooms[room].push({
+            socketId: socket.id,
+            peerId: peerId
+        });
+
+        console.log(
+            "ROOM STATE:",
+            rooms[room]
+        );
+
+        /* DISCONNECT */
+
+        socket.on(
+            "disconnect",
+            () => {
+
+                console.log(
+                    "DISCONNECTED:",
+                    socket.id
+                );
+
+                if (
+                    rooms[room]
+                ) {
+
+                    rooms[room] =
+                        rooms[room].filter(
+                            (user) =>
+                                user.socketId !== socket.id
+                        );
+
+                    if (
+                        rooms[room]
+                            .length === 0
+                    ) {
+
+                        delete rooms[room];
+                    }
+
+                    console.log(
+                        "UPDATED ROOM:",
+                        rooms[room]
+                    );
+                }
+            }
+        );
+    }
+);
 
     /* SEND MESSAGE */
 
@@ -160,7 +247,7 @@ io.on("connection", (socket) => {
         }
     );
 
-    /* DISCONNECT */
+    /* GENERAL DISCONNECT */
 
     socket.on(
         "disconnect",

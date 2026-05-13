@@ -10,6 +10,8 @@ import {
 
 import Peer from "peerjs";
 
+import socket from "../socket";
+
 function SessionRoom() {
 
     const { sessionId } =
@@ -26,48 +28,15 @@ function SessionRoom() {
 
     useEffect(() => {
 
-        /* CREATE PEER */
-
-        const peer =
-            new Peer(
-                undefined,
-                {
-                    host: "127.0.0.1",
-                    port: 9000,
-                    path: "/",
-                    secure: false
-                }
-            );
-
-        /* PEER CONNECTED */
-
-        peer.on(
-            "open",
-            (id) => {
-
-                console.log(
-                    "CONNECTED PEER:",
-                    id
-                );
-
-                setPeerId(id);
-            }
+        console.log(
+            "SESSION ROOM LOADED"
         );
 
-        /* PEER ERRORS */
+        let localStream;
 
-        peer.on(
-            "error",
-            (err) => {
+        let peer;
 
-                console.log(
-                    "PEER ERROR:",
-                    err
-                );
-            }
-        );
-
-        /* ACCESS CAMERA + MIC */
+        /* GET CAMERA + MIC */
 
         navigator.mediaDevices
             .getUserMedia({
@@ -75,6 +44,12 @@ function SessionRoom() {
                 audio: true
             })
             .then((stream) => {
+
+                console.log(
+                    "MEDIA ACCESS GRANTED"
+                );
+
+                localStream = stream;
 
                 /* SHOW LOCAL VIDEO */
 
@@ -86,53 +61,119 @@ function SessionRoom() {
                         stream;
                 }
 
-                /* WAIT BEFORE ASKING */
+                /* CREATE PEER */
 
-                setTimeout(() => {
+                peer =
+                    new Peer(
+                        undefined,
+                        {
+                            host: "127.0.0.1",
+                            port: 9000,
+                            path: "/",
+                            secure: false
+                        }
+                    );
 
-                    const otherPeerId =
-                        prompt(
-                            "Enter other user's Peer ID"
+                console.log(
+                    "PEER OBJECT CREATED"
+                );
+
+                /* PEER CONNECTED */
+
+                peer.on(
+                    "open",
+                    (id) => {
+
+                        console.log(
+                            "CONNECTED PEER:",
+                            id
                         );
 
-                    /* CALL OTHER USER */
+                        setPeerId(id);
 
-                    if (
-                        otherPeerId
-                    ) {
-
-                        const call =
-                            peer.call(
-                                otherPeerId,
-                                stream
-                            );
-
-                        /* RECEIVE REMOTE VIDEO */
-
-                        call.on(
-                            "stream",
-                            (
-                                remoteStream
-                            ) => {
-
-                                if (
-                                    remoteVideoRef.current
-                                ) {
-
-                                    remoteVideoRef.current.srcObject =
-                                        remoteStream;
-                                }
+                        socket.emit(
+                            "join_room",
+                            {
+                                room: sessionId,
+                                peerId: id
                             }
                         );
                     }
+                );
 
-                }, 3000);
+                /* PEER ERROR */
 
-                /* ANSWER INCOMING CALL */
+                peer.on(
+                    "error",
+                    (err) => {
+
+                        console.log(
+                            "PEER ERROR:",
+                            err
+                        );
+                    }
+                );
+
+                /* EXISTING USERS */
+
+                socket.on(
+                    "all-users",
+                    (users) => {
+
+                        console.log(
+                            "ALL USERS:",
+                            users
+                        );
+
+                        users.forEach(
+                            (
+                                remotePeerId
+                            ) => {
+
+                                console.log(
+                                    "CALLING:",
+                                    remotePeerId
+                                );
+
+                                const call =
+                                    peer.call(
+                                        remotePeerId,
+                                        stream
+                                    );
+
+                                call.on(
+                                    "stream",
+                                    (
+                                        remoteStream
+                                    ) => {
+
+                                        console.log(
+                                            "REMOTE STREAM RECEIVED"
+                                        );
+
+                                        if (
+                                            remoteVideoRef.current
+                                        ) {
+
+                                            remoteVideoRef.current.srcObject =
+                                                remoteStream;
+                                        }
+                                    }
+                                );
+                            }
+                        );
+                    }
+                );
+
+                /* RECEIVE CALL */
 
                 peer.on(
                     "call",
                     (call) => {
+
+                        console.log(
+                            "ANSWERING CALL"
+                        );
 
                         call.answer(
                             stream
@@ -143,6 +184,10 @@ function SessionRoom() {
                             (
                                 remoteStream
                             ) => {
+
+                                console.log(
+                                    "RECEIVED STREAM"
+                                );
 
                                 if (
                                     remoteVideoRef.current
@@ -159,14 +204,73 @@ function SessionRoom() {
             })
             .catch((err) => {
 
-                console.log(err);
+                console.log(
+                    "MEDIA ERROR:",
+                    err
+                );
 
                 alert(
                     "Camera/Microphone access denied"
                 );
             });
 
-    }, []);
+        /* CLEANUP */
+
+        return () => {
+
+            console.log(
+                "FULL CLEANUP"
+            );
+
+            socket.off(
+                "all-users"
+            );
+
+            socket.off(
+                "user-connected"
+            );
+
+            if (
+                peer
+            ) {
+
+                peer.destroy();
+            }
+
+            if (
+                localStream
+            ) {
+
+                localStream
+                    .getTracks()
+                    .forEach(
+                        (
+                            track
+                        ) => {
+
+                            track.stop();
+                        }
+                    );
+            }
+
+            if (
+                localVideoRef.current
+            ) {
+
+                localVideoRef.current.srcObject =
+                    null;
+            }
+
+            if (
+                remoteVideoRef.current
+            ) {
+
+                remoteVideoRef.current.srcObject =
+                    null;
+            }
+        };
+
+    }, [sessionId]);
 
     return (
 
@@ -184,7 +288,7 @@ function SessionRoom() {
 
                 <p className="text-gray-400 mt-2">
 
-                    Live collaborative learning
+                    Live realtime collaboration
 
                 </p>
 
@@ -202,12 +306,11 @@ function SessionRoom() {
 
                     </p>
 
-                    <p className="text-3xl font-bold mt-2 break-all">
+                    <p className="text-xl font-bold mt-2 break-all">
 
                         {
-                            peerId
-                                ? peerId
-                                : "Connecting..."
+                            peerId ||
+                            "Connecting..."
                         }
 
                     </p>
@@ -216,13 +319,13 @@ function SessionRoom() {
 
             </div>
 
-            {/* VIDEO GRID */}
+            {/* VIDEOS */}
 
             <div className="flex-1 grid md:grid-cols-2 gap-6 p-6">
 
                 {/* LOCAL VIDEO */}
 
-                <div className="bg-white/10 border border-white/10 rounded-3xl p-5">
+                <div className="bg-white/10 rounded-3xl p-5">
 
                     <h2 className="text-2xl font-semibold mb-4">
 
@@ -242,7 +345,7 @@ function SessionRoom() {
 
                 {/* REMOTE VIDEO */}
 
-                <div className="bg-white/10 border border-white/10 rounded-3xl p-5">
+                <div className="bg-white/10 rounded-3xl p-5">
 
                     <h2 className="text-2xl font-semibold mb-4">
 
@@ -258,28 +361,6 @@ function SessionRoom() {
                     />
 
                 </div>
-
-            </div>
-
-            {/* FOOTER */}
-
-            <div className="p-6 border-t border-white/10 flex justify-between items-center">
-
-                <div className="text-gray-400">
-
-                    Session ID:
-                    {" "}
-                    {sessionId}
-
-                </div>
-
-                <button
-                    className="bg-red-500 hover:bg-red-600 px-6 py-3 rounded-2xl transition-all duration-300"
-                >
-
-                    Leave Session
-
-                </button>
 
             </div>
 
