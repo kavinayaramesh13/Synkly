@@ -43,17 +43,16 @@ const server =
 const io = new Server(server, {
     cors: {
         origin: "*",
-        methods: ["GET", "POST"]
+        methods: [
+            "GET",
+            "POST"
+        ]
     }
 });
 
 /* ONLINE USERS */
 
 const onlineUsers = {};
-
-/* VIDEO ROOMS */
-
-const rooms = {};
 
 /* MIDDLEWARE */
 
@@ -63,21 +62,38 @@ app.use(express.json());
 
 /* ROUTES */
 
-app.use("/api/users", userRoutes);
+app.use(
+    "/api/users",
+    userRoutes
+);
 
-app.use("/api/matches", matchRoutes);
+app.use(
+    "/api/matches",
+    matchRoutes
+);
 
-app.use("/api/requests", requestRoutes);
+app.use(
+    "/api/requests",
+    requestRoutes
+);
 
-app.use("/api/sessions", sessionRoutes);
+app.use(
+    "/api/sessions",
+    sessionRoutes
+);
 
-app.use("/api/messages", messageRoutes);
+app.use(
+    "/api/messages",
+    messageRoutes
+);
 
 /* TEST ROUTE */
 
 app.get("/", (req, res) => {
 
-    res.send("Synkly API Running");
+    res.send(
+        "Synkly API Running"
+    );
 });
 
 /* DATABASE TEST */
@@ -96,90 +112,143 @@ pool.connect()
 
 /* SOCKET CONNECTION */
 
-io.on("connection", (socket) => {
-
-    console.log(
-        "User Connected:",
-        socket.id
-    );
-
-    /* USER ONLINE */
-
-    socket.on(
-        "user_online",
-        (userId) => {
-
-            onlineUsers[userId] =
-                socket.id;
-
-            io.emit(
-                "online_users",
-                Object.keys(
-                    onlineUsers
-                )
-            );
-        }
-    );
-
-    /* JOIN VIDEO ROOM */
-
-    socket.on(
-    "join_room",
-    ({ room, peerId }) => {
-
-        socket.join(room);
+io.on(
+    "connection",
+    (socket) => {
 
         console.log(
-            "JOIN ROOM:",
-            room,
-            peerId
+            "User Connected:",
+            socket.id
         );
 
-        /* CREATE ROOM */
+        /* USER ONLINE */
 
-        if (!rooms[room]) {
+        socket.on(
+            "user_online",
+            (userId) => {
 
-            rooms[room] = [];
-        }
+                onlineUsers[userId] =
+                    socket.id;
 
-        /* REMOVE DUPLICATES */
-
-        rooms[room] =
-            rooms[room].filter(
-                (user) =>
-                    user.socketId !== socket.id
-            );
-
-        /* EXISTING USERS */
-
-        const existingUsers =
-            rooms[room].map(
-                (user) =>
-                    user.peerId
-            );
-
-        console.log(
-            "EXISTING USERS:",
-            existingUsers
+                io.emit(
+                    "online_users",
+                    Object.keys(
+                        onlineUsers
+                    )
+                );
+            }
         );
 
-        /* SEND USERS */
+        /* JOIN ROOM */
 
-        socket.emit(
-            "all-users",
-            existingUsers
+        socket.on(
+            "join_room",
+            ({
+                room,
+                peerId,
+                name
+            }) => {
+
+                console.log(
+                    `${name} joined ${room}`
+                );
+
+                socket.join(room);
+
+                socket.room =
+                    room;
+
+                socket.peerId =
+                    peerId;
+
+                socket.name =
+                    name;
+
+                /* GET USERS INSIDE ROOM */
+
+                const roomSockets =
+                    io.sockets.adapter.rooms.get(
+                        room
+                    );
+
+                let users = [];
+
+                if (roomSockets) {
+
+                    roomSockets.forEach(
+                        (id) => {
+
+                            const s =
+                                io.sockets.sockets.get(
+                                    id
+                                );
+
+                            if (
+                                s &&
+                                s.peerId &&
+                                s.peerId !==
+                                peerId
+                            ) {
+
+                                users.push({
+                                    peerId:
+                                        s.peerId,
+
+                                    name:
+                                        s.name
+                                });
+                            }
+                        }
+                    );
+                }
+
+                /* SEND EXISTING USERS */
+
+                socket.emit(
+                    "all-users",
+                    users
+                );
+
+                /* NOTIFY OTHERS */
+
+                socket.to(room).emit(
+                    "user-connected",
+                    {
+                        peerId,
+                        name
+                    }
+                );
+            }
         );
 
-        /* ADD CURRENT USER */
+        /* SEND MESSAGE */
 
-        rooms[room].push({
-            socketId: socket.id,
-            peerId: peerId
-        });
+        socket.on(
+            "send_message",
+            (data) => {
 
-        console.log(
-            "ROOM STATE:",
-            rooms[room]
+                io.to(
+                    data.room
+                ).emit(
+                    "receive_message",
+                    data
+                );
+            }
+        );
+
+        /* TYPING */
+
+        socket.on(
+            "typing",
+            (data) => {
+
+                socket
+                    .to(data.room)
+                    .emit(
+                        "user_typing",
+                        data
+                    );
+            }
         );
 
         /* DISCONNECT */
@@ -189,31 +258,45 @@ io.on("connection", (socket) => {
             () => {
 
                 console.log(
-                    "DISCONNECTED:",
+                    "User Disconnected:",
                     socket.id
                 );
 
-                if (
-                    rooms[room]
+                for (
+                    let userId
+                    in onlineUsers
                 ) {
 
-                    rooms[room] =
-                        rooms[room].filter(
-                            (user) =>
-                                user.socketId !== socket.id
-                        );
-
                     if (
-                        rooms[room]
-                            .length === 0
+                        onlineUsers[
+                            userId
+                        ] === socket.id
                     ) {
 
-                        delete rooms[room];
+                        delete onlineUsers[
+                            userId
+                        ];
                     }
+                }
 
-                    console.log(
-                        "UPDATED ROOM:",
-                        rooms[room]
+                io.emit(
+                    "online_users",
+                    Object.keys(
+                        onlineUsers
+                    )
+                );
+
+                /* NOTIFY ROOM */
+
+                if (
+                    socket.room
+                ) {
+
+                    socket.to(
+                        socket.room
+                    ).emit(
+                        "user-disconnected",
+                        socket.peerId
                     );
                 }
             }
@@ -221,75 +304,18 @@ io.on("connection", (socket) => {
     }
 );
 
-    /* SEND MESSAGE */
-
-    socket.on(
-        "send_message",
-        (data) => {
-
-            io.to(data.room).emit(
-                "receive_message",
-                data
-            );
-        }
-    );
-
-    /* TYPING */
-
-    socket.on(
-        "typing",
-        (data) => {
-
-            socket.to(data.room).emit(
-                "user_typing",
-                data
-            );
-        }
-    );
-
-    /* GENERAL DISCONNECT */
-
-    socket.on(
-        "disconnect",
-        () => {
-
-            for (
-                let userId
-                in onlineUsers
-            ) {
-
-                if (
-                    onlineUsers[userId] ===
-                    socket.id
-                ) {
-
-                    delete onlineUsers[userId];
-                }
-            }
-
-            io.emit(
-                "online_users",
-                Object.keys(
-                    onlineUsers
-                )
-            );
-
-            console.log(
-                "User Disconnected:",
-                socket.id
-            );
-        }
-    );
-});
-
 /* START SERVER */
 
 const PORT =
-    process.env.PORT || 5000;
+    process.env.PORT ||
+    5000;
 
-server.listen(PORT, () => {
+server.listen(
+    PORT,
+    () => {
 
-    console.log(
-        `Server running on port ${PORT}`
-    );
-});
+        console.log(
+            `Server running on port ${PORT}`
+        );
+    }
+);
