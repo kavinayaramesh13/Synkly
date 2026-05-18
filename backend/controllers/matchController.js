@@ -6,7 +6,7 @@ const parseSkills = (skills) => {
         return [];
     }
 
-    // PostgreSQL array already parsed
+    /* POSTGRES ARRAY */
 
     if (Array.isArray(skills)) {
 
@@ -19,7 +19,7 @@ const parseSkills = (skills) => {
             );
     }
 
-    // PostgreSQL string format
+    /* POSTGRES STRING FORMAT */
 
     if (typeof skills === "string") {
 
@@ -41,31 +41,33 @@ const getMatches = async (req, res) => {
 
     try {
 
-        // FIXED
+        const currentUserId =
+            req.user;
 
-        const currentUserId = req.user;
-
-        // Current User
+        /* CURRENT USER */
 
         const currentUserResult =
             await pool.query(
-                "SELECT * FROM users WHERE id = $1",
+                `
+                SELECT *
+                FROM users
+                WHERE id = $1
+                `,
                 [currentUserId]
             );
 
         const currentUser =
             currentUserResult.rows[0];
 
-        // User safety
-
         if (!currentUser) {
 
             return res.status(404).json({
-                message: "User not found"
+                message:
+                    "User not found"
             });
         }
 
-        // Normalize current user skills
+        /* CURRENT USER SKILLS */
 
         const currentOffered =
             parseSkills(
@@ -77,72 +79,106 @@ const getMatches = async (req, res) => {
                 currentUser.skills_wanted
             );
 
-        // Get all other users
+        /* GET OTHER USERS */
 
         const usersResult =
             await pool.query(
-                "SELECT * FROM users WHERE id != $1",
+                `
+                SELECT *
+                FROM users
+                WHERE id != $1
+                `,
                 [currentUserId]
             );
 
         const allUsers =
             usersResult.rows;
 
-        // Match users
+        /* MATCHING */
 
-        const matches = allUsers.map((user) => {
+        const matches =
+            allUsers.map((user) => {
 
-            const offeredSkills =
-                parseSkills(
-                    user.skills_offered
-                );
+                const offeredSkills =
+                    parseSkills(
+                        user.skills_offered
+                    );
 
-            const wantedSkills =
-                parseSkills(
-                    user.skills_wanted
-                );
+                const wantedSkills =
+                    parseSkills(
+                        user.skills_wanted
+                    );
 
-            // Two-way matching
+                /* USER OFFERS WHAT I WANT */
 
-            const offeredMatch =
-                offeredSkills.filter(skill =>
-                    currentWanted.includes(skill)
-                );
+                const offeredMatch =
+                    offeredSkills.filter(
+                        skill =>
+                            currentWanted.includes(skill)
+                    );
 
-            const wantedMatch =
-                wantedSkills.filter(skill =>
-                    currentOffered.includes(skill)
-                );
+                /* USER WANTS WHAT I OFFER */
 
-            const totalMatches =
-                offeredMatch.length +
-                wantedMatch.length;
+                const wantedMatch =
+                    wantedSkills.filter(
+                        skill =>
+                            currentOffered.includes(skill)
+                    );
 
-            const totalSkills =
-                currentOffered.length +
-                currentWanted.length;
+                let matchPercentage = 0;
 
-            const matchPercentage =
-                totalSkills > 0
-                    ? Math.round(
-                        (totalMatches / totalSkills) * 100
-                      )
-                    : 0;
+                /* PERFECT TWO-WAY MATCH */
 
-            return {
-                ...user,
-                matchPercentage
-            };
-        });
+                if (
 
-        // Only useful matches
+                    offeredMatch.length > 0 &&
+                    wantedMatch.length > 0
+
+                ) {
+
+                    matchPercentage = 100;
+
+                }
+
+                /* ONE-WAY MATCH */
+
+                else if (
+
+                    offeredMatch.length > 0 ||
+                    wantedMatch.length > 0
+
+                ) {
+
+                    matchPercentage = 50;
+                }
+
+                return {
+
+                    ...user,
+
+                    skills_offered:
+                        offeredSkills,
+
+                    skills_wanted:
+                        wantedSkills,
+
+                    offeredMatch,
+
+                    wantedMatch,
+
+                    matchPercentage
+                };
+            });
+
+        /* FILTER MATCHES */
 
         const filteredMatches =
             matches.filter(
-                user => user.matchPercentage > 0
+                user =>
+                    user.matchPercentage > 0
             );
 
-        // Sort highest first
+        /* SORT */
 
         filteredMatches.sort(
             (a, b) =>
@@ -150,16 +186,22 @@ const getMatches = async (req, res) => {
                 a.matchPercentage
         );
 
-        res.json(filteredMatches);
+        res.json(
+            filteredMatches
+        );
 
     } catch (error) {
 
-        console.log("MATCH ERROR:");
+        console.log(
+            "MATCH ERROR:"
+        );
 
         console.log(error);
 
         res.status(500).json({
-            message: "Server Error"
+
+            message:
+                "Server Error"
         });
     }
 };
